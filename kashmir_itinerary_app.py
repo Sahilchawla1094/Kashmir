@@ -16,13 +16,23 @@ def main():
     st.subheader("Trip Details")
     num_passengers = st.number_input("Number of Passengers", min_value=1, step=1)
     car_type = st.selectbox("Type of Car", ["Sedan", "SUV", "Minivan", "Luxury"])
-    car_price = st.number_input("Price for Car Service", min_value=0.0, step=100.0, format="%.2f")
-    hotel_type = st.selectbox("Type of Hotel", ["Budget", "Standard", "Deluxe", "Luxury"])
-    hotel_price = st.number_input("Price for Hotel", min_value=0.0, step=100.0, format="%.2f")
+    car_price_per_day = st.number_input("Price for Car Service per Day", min_value=0.0, step=100.0, format="%.2f")
+    car_days = st.number_input("Number of Days Car is Needed", min_value=1, step=1)
+    num_cars = st.number_input("Number of Cars Needed", min_value=1, step=1)
+    total_car_price = car_price_per_day * car_days * num_cars
+
     places_to_visit = st.multiselect("Places to Visit", ["Srinagar", "Pahalgam", "Gulmarg", "Sonmarg", "Doodpathri"])
-    place_prices = {}
+
+    # Hotel Details for Each Location
+    hotel_details = {}
     for place in places_to_visit:
-        place_prices[place] = st.number_input(f"Price for Visiting {place}", min_value=0.0, step=100.0, format="%.2f")
+        hotel_name = st.text_input(f"Hotel Name at {place}", key=f"hotel_name_{place}")
+        hotel_price = st.number_input(f"Price for Hotel at {place}", min_value=0.0, step=100.0, format="%.2f", key=f"hotel_price_{place}")
+        if hotel_name:
+            hotel_details[place] = {
+                "hotel_name": hotel_name,
+                "hotel_price": hotel_price
+            }
 
     # Start and End Dates
     st.subheader("Trip Dates")
@@ -57,11 +67,11 @@ def main():
         else:
             trip_id = generate_trip_id()
             total_amount = calculate_total_amount(
-                car_price, hotel_price, place_prices, flight_price, include_flight, num_passengers
+                total_car_price, hotel_details, flight_price, include_flight, num_passengers
             )
             itinerary = generate_itinerary(
                 customer_name, phone_number, uploaded_files,
-                num_passengers, car_type, hotel_type, places_to_visit,
+                num_passengers, car_type, num_cars, places_to_visit, hotel_details,
                 start_date, end_date, num_days, num_nights, trip_id, total_amount
             )
             st.success("Itinerary Generated Successfully!")
@@ -70,8 +80,8 @@ def main():
 def generate_trip_id():
     return str(random.randint(10000, 99999))
 
-def calculate_total_amount(car_price, hotel_price, place_prices, flight_price, include_flight, num_passengers):
-    base_amount = car_price + hotel_price + sum(place_prices.values())
+def calculate_total_amount(total_car_price, hotel_details, flight_price, include_flight, num_passengers):
+    base_amount = total_car_price + sum(hotel["hotel_price"] for hotel in hotel_details.values())
     if include_flight:
         base_amount += flight_price * num_passengers
     margin = base_amount * 0.5  # 50% margin
@@ -80,7 +90,7 @@ def calculate_total_amount(car_price, hotel_price, place_prices, flight_price, i
     return total_amount
 
 def generate_itinerary(customer_name, phone_number, uploaded_files,
-                       num_passengers, car_type, hotel_type, places_to_visit,
+                       num_passengers, car_type, num_cars, places_to_visit, hotel_details,
                        start_date, end_date, num_days, num_nights, trip_id, total_amount):
     itinerary = []
 
@@ -100,8 +110,11 @@ def generate_itinerary(customer_name, phone_number, uploaded_files,
     itinerary.append("\nTrip Details:")
     itinerary.append(f"Number of Passengers: {num_passengers}")
     itinerary.append(f"Type of Car: {car_type}")
-    itinerary.append(f"Type of Hotel: {hotel_type}")
-    itinerary.append(f"Places to Visit: {', '.join(places_to_visit)}")
+    itinerary.append(f"Number of Cars: {num_cars}")
+    itinerary.append(f"Places to Visit:")
+    for place in places_to_visit:
+        hotel_name = hotel_details.get(place, {}).get("hotel_name", "N/A")
+        itinerary.append(f"- {place} (Hotel: {hotel_name})")
     itinerary.append(f"Duration: {num_days} Days and {num_nights} Nights")
     itinerary.append(f"Start Date: {start_date.strftime('%d-%m-%Y')}")
     itinerary.append(f"End Date: {end_date.strftime('%d-%m-%Y')}")
